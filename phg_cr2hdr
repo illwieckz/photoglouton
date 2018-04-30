@@ -1,0 +1,50 @@
+#! /usr/bin/env python3
+#-*- coding: UTF-8 -*-
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+import glob
+import os
+import subprocess
+import threading
+import multiprocessing
+
+def run_cr2hdr (cr2_file, cr2_file_count, cr2_file_amount):
+	process = subprocess.Popen(["cr2hdr", cr2_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+	stdout, stderr = process.communicate()
+
+	is_dual = False
+	for line in stdout.decode().split('\n'):
+		if line == "Full-res reconstruction...":
+			is_dual = True
+
+	counter = str(cr2_file_count).zfill(len(str(cr2_file_amount))) + "/" + str(cr2_file_amount)
+	if is_dual:
+		print(counter + ": " + cr2_file + ": dual iso, converted.")
+		xmp_file = cr2_file + os.path.extsep + "xmp"
+		process = subprocess.Popen(["exiftool", "-Rating=-1", xmp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+		stdout, stderr = process.communicate()
+	else:
+		print(counter + ": " + cr2_file + ": normal, kept.")
+
+def main ():
+	os.chdir(".")
+
+	cr2_file_list = glob.glob("*.[Cc][Rr]2")
+	cr2_file_amount = len(cr2_file_list)
+	cr2_file_count = 1
+	for cr2_file in cr2_file_list:
+		# no need to use multiprocessing to manage task contention, since each task will call its own process
+		# using threads on one core is faster, and it does not prevent tasks to be able to use other cores
+		thread = threading.Thread(target = run_cr2hdr, args = (cr2_file, cr2_file_count, cr2_file_amount))
+		while threading.active_count() > multiprocessing.cpu_count():
+			pass
+		thread.start()
+		cr2_file_count += 1
+
+if __name__ == "__main__":
+	main()

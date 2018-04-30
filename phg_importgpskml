@@ -1,0 +1,19 @@
+#! /bin/sh
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+for file in /media/$(whoami)/*/GPSLOG/*KML
+do
+	skip="$(gpsinterval ${file})"
+	name="$(basename "$file" .KML)"
+	date="$(grep '<Placemark>' $file -A 1 | head -n 2 | tail -n 1 | sed -e 's/.*\([0-9][0-9][0-9][0-9]\)-\([0-9][0-9]\)-\([0-9][0-9]\) \([0-9][0-9]\):\([0-9][0-9]\):\([0-9][0-9]\).*/\1\2\3\4\5\6/')"
+	filedate="$(grep '<Placemark>' $file -A 1 | head -n 2 | tail -n 1 | sed -e 's/.*\([0-9][0-9][0-9][0-9]\)-\([0-9][0-9]\)-\([0-9][0-9]\) \([0-9][0-9]\):\([0-9][0-9]\):\([0-9][0-9]\).*/\1\2\3-\4\5\6/')"
+	newname="${filedate}.trace-gps.gpx"
+	gpsbabel -i kml -f $file  -x track,faketime=$date+$skip -o gpx -F "${destdir}/${newname}"
+done
+
+#EOF

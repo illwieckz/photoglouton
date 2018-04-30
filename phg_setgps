@@ -1,0 +1,52 @@
+#! /usr/bin/env python3
+#-*- coding: UTF-8 -*-
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+import glob
+import os
+import subprocess
+import threading
+import multiprocessing
+import sys
+
+def run_setgps (gps_file, jpg_file, jpg_file_count, jpg_file_amount):
+	process = subprocess.Popen(["exiftool", "-m", "-overwrite_original_in_place", "-r", "-tagsFromFile", gps_file, "-gps:all", jpg_file] , stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+	# workaround to bogous behavior, if the Python process don't bind on stdout
+	# it look likes threading.active_count() only count spawning function, not the subprocess
+	# running inside, leading to fork bomb
+	stdout, stderr = process.communicate()
+
+	counter = str(jpg_file_count).zfill(len(str(jpg_file_amount))) + "/" + str(jpg_file_amount)
+	print(counter + ": " + jpg_file + ": gps info updated.")
+
+def main (argv):
+	if len(argv) == 0:
+		print("ERR: missing gps file")
+		return False
+	elif len(argv) > 1:
+		print("ERR: too much parameters")
+		return False
+
+	gps_file = argv[0]
+
+	os.chdir(".")
+
+	jpg_file_list = glob.glob("*.[Jj][Pp][Gg]")
+	jpg_file_amount = len(jpg_file_list)
+	jpg_file_count = 1
+	for jpg_file in jpg_file_list:
+		# no need to use multiprocessing to manage task contention, since each task will call its own process
+		# using threads on one core is faster, and it does not prevent tasks to be able to use other cores
+		thread = threading.Thread(target = run_setgps, args = (gps_file, jpg_file, jpg_file_count, jpg_file_amount))
+		while threading.active_count() > multiprocessing.cpu_count():
+			pass
+		thread.start()
+		jpg_file_count += 1
+
+if __name__ == "__main__":
+	main(sys.argv[1:])

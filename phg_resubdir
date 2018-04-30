@@ -1,0 +1,23 @@
+#! /bin/sh
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+getDate () {
+	cd "${1}"
+	ls *.jpg | head -n 1 | cut -c1-13
+}
+
+getName () {
+	cd "${1}"
+	basename "$(ls *.jpg | head -n 1)" .jpg | cut -c21-
+}
+
+subdir="$(echo "${1}" | sed -e 's#/*$##')"
+
+mv -v "${@}" "$(getDate "${@}").${subdir}-$(getName "${@}")"
+
+#EOF

@@ -1,0 +1,85 @@
+#! /bin/sh
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+find_dir () {
+	#find /media/$(whoami)/ -name 'DCIM' | while read dir
+	#find $(grep '^/' /etc/mtab | cut -d' ' -f2) -maxdepth 1 -name 'DCIM'
+	mount | grep '^/' | sed -e 's/[^ ]* on //;s/ type .*//' \
+	| while read line
+	do
+		find "${line}" -maxdepth 1 -name 'DCIM'
+	done
+}
+
+find_file () {
+	find "${1}" -maxdepth 2 \
+		-iname '*.jpg' \
+		-o -iname '*.dng' \
+		-o -iname '*.nef' \
+		-o -iname '*.cr2' \
+		-o -iname '*.wav' \
+		-o -iname '*.avi' \
+		-o -iname '*.mov'
+}
+
+print_zero () {
+	len="$(($(echo -n "${2}" | wc -c) - $(echo -n "${1}" | wc -c)))"
+	i='0'
+	while [ "${i}" -lt "${len}" ]
+	do
+		echo -n '0'
+		i="$((${i} + 1))"
+	done
+}
+
+print_fraction () {
+	print_zero "${1}" "${2}"
+	printf "%s/%s\n" "${1}" "${2}"
+}
+
+main () {
+	find_dir | while read dir
+	do
+		cardname="$(basename "$(echo "${dir}" | sed -e 's/DCIM$//')")"
+		tmpname="$(dd if=/dev/urandom bs=4 count=1 2>/dev/null | hexdump -ve '1/1 "%.2x"')"
+		datename="$(printf '%x' "$(date +%s)")"
+
+		max="$(find_file "${dir}" | wc -l)"
+		count=0
+		find_file "${dir}" | while read file
+		do
+			count="$((${count} + 1))"
+			filename="$(basename "${file}")"
+			dirname="$(basename "$(dirname "${file}")")"
+			newname="${datename}.${tmpname}.${dirname}.${filename}"
+			printf "%s, %s: " "${cardname}" "$(print_fraction "${count}" "${max}")"
+			printf "\"%s\" -> \"%s\"" "${file}" "./${newname}"
+			printf ", copy:"
+			if cp -an "${file}" "./${newname}"
+			then
+				printf " ok, check:"
+				if diff "${file}" "./${newname}" >/dev/null
+				then
+					printf " ok.\n"
+				else
+					printf " ko.\n"
+				fi
+			else
+				printf " ko.\n"
+			fi
+		done
+	done
+
+	printf "syncing:"
+	sync
+	printf " done.\n"
+}
+
+main
+
+#EOF

@@ -1,0 +1,167 @@
+#! /bin/sh
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+getPentaxDate () {
+	maker="$(dd status=none if="${1}" skip=144 bs=1 count=18)"
+	if [ "x${maker}" = "xPENTAX Corporation" ]
+	then
+		model="$(dd status=none if="${1}" skip=172 bs=1 count=16)"
+		if [ "x${model}" = "xPENTAX Optio W30" ]
+		then
+			date="$(dd status=none if="${1}" skip=56 bs=1 count=10)"
+			time="$(dd status=none if="${1}" skip=122 bs=1 count=8)"
+			echo "${date} ${time}"
+		fi
+	fi
+}
+
+getMediaInfoDate () {
+	mediainfo "${1}" | grep '^Encoded date\|^Mastered date\|^Recorded date' | tail -n 1 | sed -e 's/[^:]* : //;s/UTC //;s/- /-0/'
+}
+
+getExifDate () {
+	exiftool -args -DateTimeOriginal -CreateDate -SubSecDateTimeOriginal "${1}" \
+	| tail -n 1 | cut -d= -f2 | sed -e 's/:/-/1;s/:/-/1'
+}
+
+getDatePrefix () {
+	filename="${@}"
+	if [ "$(basename "${filename}" | sed -e 's/^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-\(xxx\).*$/\1/')" = 'xxx' ]
+	then
+		basename "${filename}" | sed -e 's/^\([0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-xxx\).*$/\1/'
+		exit
+	fi
+
+	mimetype="$(mimetype -b "${filename}")"
+	case "${mimetype}" in
+		image/jpeg)
+			datetime="$(getExifDate "${filename}")"
+		;;
+		audio/x-wav)
+			datetime="$(getMediaInfoDate "${filename}")"
+			if [ "$(echo "${datetime}" | wc -c)" -lt 19 ]
+			then
+				datetime="$(getPentaxDate "${filename}")"
+			fi
+		;;
+		audio/mpeg|video/mpeg|video/quicktime|video/x-msvideo)
+			datetime="$(getMediaInfoDate "${filename}")"
+			if [ "$(echo "${datetime}" | wc -c)" -gt 19 ]
+			then
+				datetime="$(date --date="${datetime}" '+%Y-%m-%d %H:%M:%S')"
+			fi
+		;;
+
+		*)
+			datetime=''
+		;;
+	esac
+
+	subsec='000'
+	if [ "$(echo "${datetime}" | wc -c)" = 23 ]
+	then
+		if [ "$(echo "${datetime}" | cut -c 20)" = '.' ]
+		then
+			subsec="$(echo "${datetime}" | cut -d'.' -f2)0"
+			datetime="$(echo "${datetime}" | cut -c 1-19)"
+		fi
+	fi
+
+	if [ "x${datetime}" = 'x' ]
+	then
+		echo "00000000-000000-xxx"
+	else
+		date --date="${datetime}" "+%Y%m%d-%H%M%S-${subsec}"
+	fi
+}
+
+getExt () {
+	filename="${@}"
+	mimetype="$(mimetype -b "${filename}")"
+
+	case "${mimetype}" in
+		"image/jpeg")
+			ext="jpg"
+		;;
+		"?nef")
+			ext="nef"
+		;;	
+		"?avi")
+			ext="avi"
+		;;
+		"?mov")
+			ext="mov"
+		;;
+		"?wav")
+			ext="wav"
+		;;
+		*)
+			ext="$(echo "${filename}" | sed -e 's/^.*\.\(.*\)$/\1/')"
+		;;
+	esac
+
+	echo "${ext}"
+}
+
+incrementIterator () {
+	filedate="${1}"
+	base="$(echo "${filedate}" | sed -e 's/\(.*\)-[0-9]*$/\1/')"
+	number="$(echo "${filedate}" | sed -e 's/.*-\([0-9]*\)$/\1/')"
+
+	number_length="$(printf "${number}" | wc -c)"
+	number="$(echo "${number}" | sed 's/^0*//')"
+	new_number="$((${number} + 1))"
+
+	new_number_length="$(printf "${new_number}" | wc -c)"
+	while [ "${new_number_length}" -lt "${number_length}" ]
+	do
+		new_number="0${new_number}"
+		new_number_length="$(printf "${new_number}" | wc -c)"
+	done
+
+	echo "${base}-${new_number}"
+}
+
+renameFile () {
+	comment="${1}"
+	filename="${2}"
+
+	ext="$(getExt "${filename}")"
+	filedate="$(getDatePrefix "${filename}")"
+
+	newname="${filedate}.${comment}.${ext}"
+
+	while [ -e "${newname}" ]
+	do
+		filedate="$(incrementIterator ${filedate})"
+		newname="${filedate}.${comment}.${ext}"
+	done
+
+	#echo ""
+	#echo f=$filename
+	#echo c=$comment
+	#echo d=$filedate
+	#echo e=$ext
+	#echo n=$newname
+
+	mv -nv "${filename}" "${newname}"
+}
+
+comment="${1}"
+
+for ext in jpg nef wav avi mov
+do
+	echo "rename ${ext}"
+	find . -maxdepth 1 -iname '*.'"${ext}" | sort \
+	| while read filename
+	do
+		renameFile "${comment}" "${filename}"
+	done
+done
+
+#EOF

@@ -1,0 +1,17 @@
+#! /bin/sh
+
+### Legal
+#
+# Author:  Thomas DEBESSE <dev@illwieckz.net>
+# License: ISC
+# 
+
+if [ -z "${1}" ]
+then
+	printf 'missing device.\n'
+	exit 1
+fi
+
+gpsbabel -t -w -r -i wbt -f "${1}" -o gpx -x discard,hdop=10,vdop=20,hdopandvdop -F "${destdir}$(date +%Y%m%d-%H%M%S)_track.gpx"
+
+#EOF
