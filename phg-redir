@@ -8,12 +8,12 @@
 
 getDate () {
 	cd "${1}"
-	ls *.jpg | head -n 1 | cut -c1-13
+	ls *.jpg *.tif | head -n 1 | cut -c1-13
 }
 
 getName () {
 	cd "${1}"
-	basename "$(ls *.jpg | head -n 1)" .jpg | cut -c21-
+	basename "$(ls *.jpg *.tif | head -n 1)" .jpg | cut -c21-
 }
 
 mv -v "${@}" "$(getDate "${@}").$(getName "${@}")"

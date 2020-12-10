@@ -24,7 +24,8 @@ find_file () {
 		-o -iname '*.cr2' \
 		-o -iname '*.wav' \
 		-o -iname '*.avi' \
-		-o -iname '*.mov'
+		-o -iname '*.mov' \
+		-o -iname '*.mp4'
 }
 
 print_zero () {

@@ -42,6 +42,9 @@ getDatePrefix () {
 		image/jpeg)
 			datetime="$(getExifDate "${filename}")"
 		;;
+		image/tiff)
+			datetime="$(getExifDate "${filename}")"
+		;;
 		audio/x-wav)
 			datetime="$(getMediaInfoDate "${filename}")"
 			if [ "$(echo "${datetime}" | wc -c)" -lt 19 ]
@@ -87,6 +90,9 @@ getExt () {
 	case "${mimetype}" in
 		"image/jpeg")
 			ext="jpg"
+		;;
+		"image/tiff")
+			ext="tif"
 		;;
 		"?nef")
 			ext="nef"
@@ -154,7 +160,7 @@ renameFile () {
 
 comment="${1}"
 
-for ext in jpg nef wav avi mov
+for ext in jpg tif nef wav avi mov
 do
 	echo "rename ${ext}"
 	find . -maxdepth 1 -iname '*.'"${ext}" | sort \

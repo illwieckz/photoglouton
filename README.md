@@ -10,7 +10,7 @@ Usage
 You can populate your `$PATH` with this script collection this way:
 
 ```sh
-eval $(path/to/photoglouton/phg_setenv)
+eval $(path/to/photoglouton/phg-setenv)
 ```
 
 Legal
