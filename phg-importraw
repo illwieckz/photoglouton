@@ -13,6 +13,8 @@ find_dir () {
 	| while read line
 	do
 		find "${line}" -maxdepth 1 -name 'DCIM'
+		find "${line}" -maxdepth 1 -name '4CH'
+		find "${line}" -maxdepth 1 -name 'STEREO'
 	done
 }
 
@@ -25,7 +27,9 @@ find_file () {
 		-o -iname '*.wav' \
 		-o -iname '*.avi' \
 		-o -iname '*.mov' \
-		-o -iname '*.mp4'
+		-o -iname '*.mp3' \
+		-o -iname '*.mp4' \
+		-o -iname '*.mlv'
 }
 
 print_zero () {
