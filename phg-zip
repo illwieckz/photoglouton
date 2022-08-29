@@ -12,7 +12,7 @@ getDirs () {
 
 zipDir () {
 	base="$(echo "${1}" | sed -e 's#/*$##')"
-	7z -mx=9 a "${base}.zip" "${base}"
+	7z -tzip -mx=9 -mfb=258 -mpass=15 a "${base}.zip" "${base}"
 }
 
 if [ -z ${@} ]
